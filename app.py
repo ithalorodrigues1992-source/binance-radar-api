@@ -4,7 +4,7 @@ import requests
 
 app = FastAPI(title="Binance Radar API", version="1.0.0")
 
-BINANCE = "https://api.binance.com"
+BINANCE = "https://data-api.binance.vision"
 
 class Signal(BaseModel):
     symbol: str
