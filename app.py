@@ -38,7 +38,6 @@ def signal(s: Signal):
 
 @app.get("/radar/{symbol}")
 def radar(symbol: str):
-def radar(symbol: str):
 
     r = requests.get(
         f"{BINANCE}/api/v3/klines",
