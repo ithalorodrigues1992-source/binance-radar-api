@@ -29,8 +29,15 @@ def signal(s: Signal):
     risk = abs(s.entry - s.stop)
     reward = abs(s.target - s.entry)
     rr = round(reward / risk, 2) if risk else None
-    return {**s.model_dump(), "risk_reward": rr, "mode": "simulado
-    @app.get("/radar/{symbol}")
+        return {
+        **s.model_dump(),
+        "risk_reward": rr,
+        "mode": "simulado"
+    }
+
+
+@app.get("/radar/{symbol}")
+def radar(symbol: str):
 def radar(symbol: str):
 
     r = requests.get(
