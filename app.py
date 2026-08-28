@@ -30,3 +30,28 @@ def signal(s: Signal):
     reward = abs(s.target - s.entry)
     rr = round(reward / risk, 2) if risk else None
     return {**s.model_dump(), "risk_reward": rr, "mode": "simulado"}
+@app.get("/radar/{symbol}")
+def radar(symbol: str):
+    r = requests.get(
+        f"{BINANCE}/api/v3/ticker/price",
+        params={"symbol": symbol.upper()},
+        timeout=10
+    )
+
+    r.raise_for_status()
+
+    data = r.json()
+    price = float(data["price"])
+
+    stop = round(price * 0.98, 4)
+    target = round(price * 1.04, 4)
+
+    return {
+        "symbol": symbol.upper(),
+        "price": price,
+        "signal": "ANALISE",
+        "entry": price,
+        "stop": stop,
+        "target": target,
+        "risk_reward": 2
+    }
