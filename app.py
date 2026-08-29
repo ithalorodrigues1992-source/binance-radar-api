@@ -248,10 +248,10 @@ def analyze_symbol(symbol: str):
 
     if (
         bullish_trend
-        and rsi >= 35
-        and rsi <= 85
-        and momentum > -1.20
-        and volume_ratio >= 0.40
+        and rsi >= 30
+        and rsi <= 90
+        and momentum > -2.00
+        and volume_ratio >= 0.25
     ):
 
         entry = price
@@ -282,7 +282,7 @@ def analyze_symbol(symbol: str):
             risk_reward=risk_reward
         )
 
-        if score < 15:
+        if score < 10:
             return None
 
         return {
@@ -309,10 +309,10 @@ def analyze_symbol(symbol: str):
 
     if (
         bearish_trend
-        and rsi >= 15
-        and rsi <= 72
-        and momentum < 1.20
-        and volume_ratio >= 0.25
+        and rsi >= 10
+        and rsi <= 78
+        and momentum < 2.00
+        and volume_ratio >= 0.20
     ):
 
         entry = price
@@ -343,7 +343,7 @@ def analyze_symbol(symbol: str):
             risk_reward=risk_reward
         )
 
-        if score < 32:
+        if score < 10:
             return None
 
         return {
