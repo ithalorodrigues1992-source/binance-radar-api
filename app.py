@@ -248,10 +248,10 @@ def analyze_symbol(symbol: str):
 
     if (
         bullish_trend
-        and rsi >= 48
-        and rsi <= 75
-        and momentum > -0.10
-        and volume_ratio >= 0.90
+        and rsi >= 45
+        and rsi <= 78
+        and momentum > -0.30
+        and volume_ratio >= 0.75
     ):
 
         entry = price
