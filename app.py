@@ -248,10 +248,10 @@ def analyze_symbol(symbol: str):
 
     if (
         bullish_trend
-        and rsi >= 40
-        and rsi <= 82
-        and momentum > -0.80
-        and volume_ratio >= 0.55
+        and rsi >= 35
+        and rsi <= 85
+        and momentum > -1.20
+        and volume_ratio >= 0.40
     ):
 
         entry = price
@@ -265,7 +265,7 @@ def analyze_symbol(symbol: str):
         if risk <= 0:
             return None
 
-        target = entry + (risk * 1.5)
+        target = entry + (risk * 1.7)
 
         reward = target - entry
 
