@@ -479,3 +479,958 @@ def symbols():
 # ============================================================
 
 TRADES = []
+# =========================================================
+# SIMULAÇÃO E HISTÓRICO DE OPERAÇÕES
+# =========================================================
+
+import threading
+import time
+from datetime import datetime
+
+
+# ---------------------------------------------------------
+# CONFIGURAÇÕES DA SIMULAÇÃO
+# ---------------------------------------------------------
+
+INITIAL_CAPITAL = 1000.0
+
+SIMULATION_CAPITAL = INITIAL_CAPITAL
+
+MAX_OPEN_TRADES = 10
+
+MIN_SCORE_TO_TRADE = 15
+
+TRADE_RISK_PERCENT = 2.0
+
+MONITOR_INTERVAL = 10
+
+
+# ---------------------------------------------------------
+# FUNÇÕES AUXILIARES
+# ---------------------------------------------------------
+
+def get_current_price(symbol: str):
+
+    try:
+
+        r = requests.get(
+            f"{BINANCE}/api/v3/ticker/price",
+            params={
+                "symbol": symbol.upper()
+            },
+            timeout=10
+        )
+
+        r.raise_for_status()
+
+        data = r.json()
+
+        return float(data["price"])
+
+    except Exception:
+
+        return None
+
+
+def get_open_trade(symbol: str):
+
+    symbol = symbol.upper()
+
+    for trade in TRADES:
+
+        if (
+            trade["symbol"] == symbol
+            and trade["status"] == "OPEN"
+        ):
+
+            return trade
+
+    return None
+
+
+def get_open_trades():
+
+    return [
+
+        trade
+
+        for trade in TRADES
+
+        if trade["status"] == "OPEN"
+
+    ]
+
+
+# ---------------------------------------------------------
+# ABRIR OPERAÇÃO SIMULADA
+# ---------------------------------------------------------
+
+def open_simulated_trade(signal):
+
+    global SIMULATION_CAPITAL
+
+
+    symbol = signal["symbol"]
+
+
+    # Evita duplicar operação
+
+    existing_trade = get_open_trade(symbol)
+
+    if existing_trade is not None:
+
+        return None
+
+
+    # Limite máximo de operações abertas
+
+    if len(get_open_trades()) >= MAX_OPEN_TRADES:
+
+        return None
+
+
+    score = signal.get("score", 0)
+
+
+    if score < MIN_SCORE_TO_TRADE:
+
+        return None
+
+
+    entry = float(signal["entry"])
+
+    stop = float(signal["stop"])
+
+    target = float(signal["target"])
+
+    side = signal["signal"]
+
+
+    # Valor utilizado na operação
+
+    position_value = (
+        SIMULATION_CAPITAL
+        * TRADE_RISK_PERCENT
+    )
+
+
+    trade = {
+
+        "id": len(TRADES) + 1,
+
+        "symbol": symbol,
+
+        "side": side,
+
+        "entry": entry,
+
+        "stop": stop,
+
+        "target": target,
+
+        "score": score,
+
+        "confidence": signal.get(
+            "confidence",
+            None
+        ),
+
+        "risk_reward": signal.get(
+            "risk_reward",
+            None
+        ),
+
+        "interval": signal.get(
+            "interval",
+            INTERVAL
+        ),
+
+        "position_value": position_value,
+
+        "status": "OPEN",
+
+        "opened_at": datetime.utcnow().isoformat(),
+
+        "closed_at": None,
+
+        "exit_price": None,
+
+        "result": None,
+
+        "profit_percent": 0.0,
+
+        "profit_value": 0.0
+
+    }
+
+
+    TRADES.append(trade)
+
+
+    return trade
+
+
+# ---------------------------------------------------------
+# FECHAR OPERAÇÃO
+# ---------------------------------------------------------
+
+def close_trade(
+    trade,
+    exit_price,
+    result
+):
+
+    global SIMULATION_CAPITAL
+
+
+    entry = float(trade["entry"])
+
+    exit_price = float(exit_price)
+
+
+    # ---------------------------------------------
+    # BUY
+    # ---------------------------------------------
+
+    if trade["side"] == "BUY":
+
+        profit_percent = (
+            (
+                exit_price - entry
+            )
+            / entry
+        ) * 100
+
+
+    # ---------------------------------------------
+    # SELL / SHORT
+    # ---------------------------------------------
+
+    else:
+
+        profit_percent = (
+            (
+                entry - exit_price
+            )
+            / entry
+        ) * 100
+
+
+    profit_value = (
+        trade["position_value"]
+        * profit_percent
+        / 100
+    )
+
+
+    trade["exit_price"] = round(
+        exit_price,
+        8
+    )
+
+    trade["status"] = "CLOSED"
+
+    trade["result"] = result
+
+    trade["profit_percent"] = round(
+        profit_percent,
+        4
+    )
+
+    trade["profit_value"] = round(
+        profit_value,
+        2
+    )
+
+    trade["closed_at"] = (
+        datetime.utcnow()
+        .isoformat()
+    )
+
+
+    SIMULATION_CAPITAL += profit_value
+
+
+    return trade
+
+
+# ---------------------------------------------------------
+# MONITORAR OPERAÇÕES ABERTAS
+# ---------------------------------------------------------
+
+def monitor_trades():
+
+    while True:
+
+        try:
+
+            open_trades = get_open_trades()
+
+
+            for trade in open_trades:
+
+
+                symbol = trade["symbol"]
+
+
+                current_price = (
+                    get_current_price(symbol)
+                )
+
+
+                if current_price is None:
+
+                    continue
+
+
+                side = trade["side"]
+
+                stop = float(
+                    trade["stop"]
+                )
+
+                target = float(
+                    trade["target"]
+                )
+
+
+                # =====================================
+                # BUY
+                # =====================================
+
+                if side == "BUY":
+
+
+                    # STOP
+
+                    if current_price <= stop:
+
+                        close_trade(
+
+                            trade=trade,
+
+                            exit_price=current_price,
+
+                            result="LOSS"
+
+                        )
+
+
+                    # TARGET
+
+                    elif current_price >= target:
+
+                        close_trade(
+
+                            trade=trade,
+
+                            exit_price=current_price,
+
+                            result="WIN"
+
+                        )
+
+
+                # =====================================
+                # SELL / SHORT
+                # =====================================
+
+                elif side == "SELL":
+
+
+                    # STOP
+
+                    if current_price >= stop:
+
+                        close_trade(
+
+                            trade=trade,
+
+                            exit_price=current_price,
+
+                            result="LOSS"
+
+                        )
+
+
+                    # TARGET
+
+                    elif current_price <= target:
+
+                        close_trade(
+
+                            trade=trade,
+
+                            exit_price=current_price,
+
+                            result="WIN"
+
+                        )
+
+
+        except Exception as e:
+
+            print(
+                "Erro no monitor de trades:",
+                e
+            )
+
+
+        time.sleep(
+            MONITOR_INTERVAL
+        )
+
+
+# ---------------------------------------------------------
+# INICIAR MONITOR EM BACKGROUND
+# ---------------------------------------------------------
+
+trade_monitor = threading.Thread(
+
+    target=monitor_trades,
+
+    daemon=True
+
+)
+
+
+trade_monitor.start()
+
+
+# =========================================================
+# ABRIR OPERAÇÃO MANUAL A PARTIR DO RADAR
+# =========================================================
+
+@app.post("/trade/{symbol}")
+
+def create_trade(symbol: str):
+
+
+    result = analyze_symbol(
+        symbol.upper()
+    )
+
+
+    if result is None:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail=(
+                "Não foi possível "
+                "analisar esta moeda"
+            )
+
+        )
+
+
+    score = result.get(
+        "score",
+        0
+    )
+
+
+    if score < MIN_SCORE_TO_TRADE:
+
+        return {
+
+            "opened": False,
+
+            "message": (
+                "Score insuficiente "
+                "para abrir operação"
+            ),
+
+            "minimum_score": (
+                MIN_SCORE_TO_TRADE
+            ),
+
+            "signal": result
+
+        }
+
+
+    trade = open_simulated_trade(
+        result
+    )
+
+
+    if trade is None:
+
+        return {
+
+            "opened": False,
+
+            "message": (
+                "Operação não aberta. "
+                "Pode já existir uma operação "
+                "nesta moeda ou o limite de "
+                "operações abertas foi atingido."
+            )
+
+        }
+
+
+    return {
+
+        "opened": True,
+
+        "mode": "simulated",
+
+        "trade": trade
+
+    }
+
+
+# =========================================================
+# VARREDURA AUTOMÁTICA + ABERTURA DE OPERAÇÕES
+# =========================================================
+
+@app.post("/auto-scan")
+
+def auto_scan():
+
+
+    opened_trades = []
+
+    analyzed = 0
+
+
+    for symbol in SYMBOLS:
+
+
+        try:
+
+            analyzed += 1
+
+
+            result = analyze_symbol(
+                symbol
+            )
+
+
+            if result is None:
+
+                continue
+
+
+            score = result.get(
+                "score",
+                0
+            )
+
+
+            if score < MIN_SCORE_TO_TRADE:
+
+                continue
+
+
+            trade = open_simulated_trade(
+                result
+            )
+
+
+            if trade is not None:
+
+                opened_trades.append(
+                    trade
+                )
+
+
+        except Exception as e:
+
+            print(
+                f"Erro ao analisar "
+                f"{symbol}:",
+                e
+            )
+
+            continue
+
+
+    return {
+
+        "analyzed": analyzed,
+
+        "opened": len(
+            opened_trades
+        ),
+
+        "trades": opened_trades,
+
+        "open_trades": len(
+            get_open_trades()
+        ),
+
+        "max_open_trades": (
+            MAX_OPEN_TRADES
+        )
+
+    }
+
+
+# =========================================================
+# LISTAR OPERAÇÕES ABERTAS
+# =========================================================
+
+@app.get("/trades/open")
+
+def trades_open():
+
+
+    open_trades = (
+        get_open_trades()
+    )
+
+
+    updated_trades = []
+
+
+    for trade in open_trades:
+
+
+        current_price = (
+            get_current_price(
+                trade["symbol"]
+            )
+        )
+
+
+        trade_data = (
+            trade.copy()
+        )
+
+
+        if current_price is not None:
+
+            entry = float(
+                trade["entry"]
+            )
+
+
+            # BUY
+
+            if trade["side"] == "BUY":
+
+                current_percent = (
+
+                    (
+                        current_price - entry
+                    )
+
+                    / entry
+
+                ) * 100
+
+
+            # SELL
+
+            else:
+
+                current_percent = (
+
+                    (
+                        entry - current_price
+                    )
+
+                    / entry
+
+                ) * 100
+
+
+            trade_data[
+                "current_price"
+            ] = round(
+                current_price,
+                8
+            )
+
+
+            trade_data[
+                "current_profit_percent"
+            ] = round(
+                current_percent,
+                4
+            )
+
+
+            trade_data[
+                "current_profit_value"
+            ] = round(
+
+                trade[
+                    "position_value"
+                ]
+
+                * current_percent
+
+                / 100,
+
+                2
+
+            )
+
+
+        updated_trades.append(
+            trade_data
+        )
+
+
+    return {
+
+        "total_open": len(
+            updated_trades
+        ),
+
+        "trades": updated_trades
+
+    }
+
+
+# =========================================================
+# HISTÓRICO COMPLETO
+# =========================================================
+
+@app.get("/trades")
+
+def all_trades():
+
+    return {
+
+        "total": len(
+            TRADES
+        ),
+
+        "trades": TRADES
+
+    }
+
+
+# =========================================================
+# ESTATÍSTICAS
+# =========================================================
+
+@app.get("/statistics")
+
+def statistics_route():
+
+    global SIMULATION_CAPITAL
+
+
+    total = len(
+        TRADES
+    )
+
+
+    open_count = len(
+        get_open_trades()
+    )
+
+
+    closed_trades = [
+
+        trade
+
+        for trade in TRADES
+
+        if trade["status"] == "CLOSED"
+
+    ]
+
+
+    wins = [
+
+        trade
+
+        for trade in closed_trades
+
+        if trade["result"] == "WIN"
+
+    ]
+
+
+    losses = [
+
+        trade
+
+        for trade in closed_trades
+
+        if trade["result"] == "LOSS"
+
+    ]
+
+
+    wins_count = len(
+        wins
+    )
+
+    losses_count = len(
+        losses
+    )
+
+
+    closed_count = len(
+        closed_trades
+    )
+
+
+    win_rate = 0
+
+
+    if closed_count > 0:
+
+        win_rate = (
+
+            wins_count
+
+            / closed_count
+
+        ) * 100
+
+
+    total_profit = sum(
+
+        trade["profit_value"]
+
+        for trade in closed_trades
+
+    )
+
+
+    total_profit_percent = (
+
+        (
+            SIMULATION_CAPITAL
+            - INITIAL_CAPITAL
+        )
+
+        / INITIAL_CAPITAL
+
+    ) * 100
+
+
+    return {
+
+        "mode": "simulated",
+
+        "initial_capital": (
+            round(
+                INITIAL_CAPITAL,
+                2
+            )
+        ),
+
+        "current_capital": (
+            round(
+                SIMULATION_CAPITAL,
+                2
+            )
+        ),
+
+        "total_analyzed_operations": (
+            total
+        ),
+
+        "open_trades": (
+            open_count
+        ),
+
+        "closed_trades": (
+            closed_count
+        ),
+
+        "wins": wins_count,
+
+        "losses": losses_count,
+
+        "win_rate": round(
+            win_rate,
+            2
+        ),
+
+        "total_profit": round(
+            total_profit,
+            2
+        ),
+
+        "total_return_percent": round(
+            total_profit_percent,
+            2
+        ),
+
+        "maximum_open_trades": (
+            MAX_OPEN_TRADES
+        ),
+
+        "minimum_score": (
+            MIN_SCORE_TO_TRADE
+        )
+
+    }
+
+
+# =========================================================
+# RESETAR SIMULAÇÃO
+# =========================================================
+
+@app.post("/reset")
+
+def reset_simulation():
+
+    global SIMULATION_CAPITAL
+
+
+    TRADES.clear()
+
+
+    SIMULATION_CAPITAL = (
+        INITIAL_CAPITAL
+    )
+
+
+    return {
+
+        "status": "reset",
+
+        "capital": (
+            SIMULATION_CAPITAL
+        )
+
+    }
+
+
+# =========================================================
+# STATUS DO ROBÔ
+# =========================================================
+
+@app.get("/status")
+
+def bot_status():
+
+    return {
+
+        "status": "online",
+
+        "mode": "simulated",
+
+        "symbols": len(
+            SYMBOLS
+        ),
+
+        "interval": INTERVAL,
+
+        "open_trades": len(
+            get_open_trades()
+        ),
+
+        "total_trades": len(
+            TRADES
+        ),
+
+        "capital": round(
+            SIMULATION_CAPITAL,
+            2
+        )
+
+    }
