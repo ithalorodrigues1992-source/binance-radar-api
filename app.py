@@ -248,15 +248,15 @@ def analyze_symbol(symbol: str):
 
     if (
         bullish_trend
-        and rsi >= 45
-        and rsi <= 78
-        and momentum > -0.30
-        and volume_ratio >= 0.75
+        and rsi >= 40
+        and rsi <= 82
+        and momentum > -0.80
+        and volume_ratio >= 0.55
     ):
 
         entry = price
 
-        recent_low = min(lows[-10:])
+        recent_low = min(lows[-8:])
 
         stop = recent_low
 
@@ -282,7 +282,7 @@ def analyze_symbol(symbol: str):
             risk_reward=risk_reward
         )
 
-        if score < 35:
+        if score < 25:
             return None
 
         return {
