@@ -309,15 +309,15 @@ def analyze_symbol(symbol: str):
 
     if (
         bearish_trend
-        and rsi >= 25
-        and rsi <= 50
-        and momentum < 0
-        and volume_ratio >= 1.00
+        and rsi >= 20
+        and rsi <= 65
+        and momentum < 0.80
+        and volume_ratio >= 0.40
     ):
 
         entry = price
 
-        recent_high = max(highs[-10:])
+        recent_high = max(highs[-8:])
 
         stop = recent_high
 
