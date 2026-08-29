@@ -282,7 +282,7 @@ def analyze_symbol(symbol: str):
             risk_reward=risk_reward
         )
 
-        if score < 20:
+        if score < 15:
             return None
 
         return {
