@@ -88,7 +88,7 @@ SYMBOLS = [
 
 INTERVAL = "5m"
 LIMIT = 100
-MIN_RISK_REWARD = 1.70
+MIN_RISK_REWARD = 1.30
 
 
 # =========================================================
