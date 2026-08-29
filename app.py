@@ -265,7 +265,7 @@ def analyze_symbol(symbol: str):
         if risk <= 0:
             return None
 
-        target = entry + (risk * 1.8)
+        target = entry + (risk * 1.5)
 
         reward = target - entry
 
@@ -282,7 +282,7 @@ def analyze_symbol(symbol: str):
             risk_reward=risk_reward
         )
 
-        if score < 25:
+        if score < 20:
             return None
 
         return {
