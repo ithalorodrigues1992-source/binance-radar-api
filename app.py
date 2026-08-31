@@ -281,10 +281,17 @@ def analyze_symbol(symbol: str):
     ) * 100
 
     # Tendência
-    bullish_trend = True
-    
+    # Tendência de alta
+bullish_trend = (
+    ema9 > ema21
+    and price > ema21
+)
 
-    bearish_trend = True
+# Tendência de baixa
+bearish_trend = (
+    ema9 < ema21
+    and price < ema21
+)
 
     # =====================================================
     # SINAL DE COMPRA
