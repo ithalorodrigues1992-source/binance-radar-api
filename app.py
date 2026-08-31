@@ -88,7 +88,7 @@ SYMBOLS = [
 
 INTERVAL = "5m"
 LIMIT = 100
-MIN_RISK_REWARD = 1.30
+MIN_RISK_REWARD = 1.0
 
 
 # =========================================================
@@ -281,15 +281,10 @@ def analyze_symbol(symbol: str):
     ) * 100
 
     # Tendência
-    bullish_trend = (
-        price > ema9
-        and ema9 > ema21
-    )
+    bullish_trend = True
+    
 
-    bearish_trend = (
-        price < ema9
-        and ema9 < ema21
-    )
+    bearish_trend = True
 
     # =====================================================
     # SINAL DE COMPRA
@@ -297,10 +292,10 @@ def analyze_symbol(symbol: str):
 
     if (
         bullish_trend
-        and rsi >= 20
-        and rsi <= 98
-        and momentum > -5.00
-        and volume_ratio >= 0.05
+        and rsi >= 5
+        and rsi <= 99
+        and momentum > -999
+        and volume_ratio >= 0
     ):
 
         entry = price
@@ -331,7 +326,7 @@ def analyze_symbol(symbol: str):
             risk_reward=risk_reward
         )
 
-        if score < 5:
+        if score < 1:
             return None
 
         return {
