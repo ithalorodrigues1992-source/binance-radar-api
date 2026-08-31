@@ -281,13 +281,11 @@ def analyze_symbol(symbol: str):
     ) * 100
 
     # Tendência
-    # Tendência de alta
 bullish_trend = (
     ema9 > ema21
     and price > ema21
 )
 
-# Tendência de baixa
 bearish_trend = (
     ema9 < ema21
     and price < ema21
